@@ -1,0 +1,1887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimum-scale=1.0">
+    <title>Frogfriends</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap');
+      
+        :root {
+            --bg-top: #a7f3d0;
+            --bg-bottom: #4fac82;
+            --accent: #fde047;
+            --celestial-top: #1e293b;
+            --celestial-bottom: #0f172a;
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #4fac82;
+            font-family: 'Gaegu', cursive;
+            user-select: none;
+            touch-action: none;
+            color: white;
+        }
+        #title-screen {
+            position: fixed; inset: 0; z-index: 10000;
+            background: linear-gradient(to bottom, #a7f3d0, #4fac82);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 1.5s ease-out, transform 1.5s ease-out;
+        }
+        .title-container { text-align: center; animation: float-title 4s ease-in-out infinite; }
+        .main-title { font-size: 6rem; font-weight: 700; color: white; text-shadow: 0 8px 0px rgba(0,0,0,0.1); line-height: 0.8; margin-bottom: 10px; }
+        .sub-title {
+            color: #fde047; font-size: 1.8rem; font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2); margin-bottom: 40px;
+            animation: pulse-text 3s ease-in-out infinite; display: inline-block;
+        }
+        @keyframes pulse-text { 0%,100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.15); opacity: 1; } }
+        @keyframes float-title { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        .start-btn {
+            background: white; color: #4fac82; padding: 15px 50px; border-radius: 100px;
+            font-size: 2rem; font-weight: 700; cursor: pointer; box-shadow: 0 10px 0px #3d8a68;
+            transition: all 0.2s; margin-top: 20px;
+        }
+        .start-btn:hover { transform: translateY(-3px); box-shadow: 0 13px 0px #3d8a68; }
+        .start-btn:active { transform: translateY(5px); box-shadow: 0 0px 0px #3d8a68; }
+
+        #pond-container {
+            position: relative; width: 100vw; height: 100vh;
+            background: linear-gradient(to bottom, var(--bg-top) 0%, var(--bg-bottom) 100%);
+            overflow: hidden; transition: background 4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer; opacity: 0;
+            touch-action: none;
+        }
+        #pond-container.visible { opacity: 1; }
+        body.zen-active #pond-container {
+            background: linear-gradient(to bottom, var(--celestial-top) 0%, var(--celestial-bottom) 100%) !important;
+        }
+        #zen-exit-detector { position: fixed; inset: 0; z-index: 9999; display: none; cursor: zoom-out; }
+        body.zen-active #zen-exit-detector { display: block; }
+
+        #fx-layer, #fish-layer, #spirit-layer { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .rain-drop { position: absolute; background: rgba(255,255,255,0.4); width: 1px; height: 20px; pointer-events: none; animation: rain-fall 0.8s linear infinite; }
+        @keyframes rain-fall { to { transform: translateY(100vh); } }
+        .snow-flake { position: absolute; background: white; border-radius: 50%; pointer-events: none; animation: snow-fall 3s linear infinite; }
+        @keyframes snow-fall { to { transform: translateY(100vh) rotate(360deg); } }
+        .spirit-orb {
+            position: absolute; width: 8px; height: 8px; background: white; border-radius: 50%;
+            filter: blur(4px); box-shadow: 0 0 10px rgba(255,255,255,0.8); animation: drift 10s linear infinite; opacity: 0.6;
+        }
+        @keyframes drift { 0% { transform: translateY(0) translateX(0); opacity: 0; } 20% { opacity: 0.6; } 100% { transform: translateY(-100vh) translateX(50px); opacity: 0; } }
+
+        .ui-root { position: absolute; inset: 0; pointer-events: none; z-index: 100; }
+        .ui-root > * { pointer-events: auto; }
+        .ui-element { transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1), transform 1.5s; }
+        .zen-active .ui-element { opacity: 0 !important; pointer-events: none !important; transform: scale(0.9) translateY(20px); }
+
+        .ui-panel {
+            background: rgba(255,255,255,0.15); backdrop-filter: blur(16px); border-radius: 40px;
+            border: 1px solid rgba(255,255,255,0.3); padding: 20px; display: flex; gap: 12px;
+            box-shadow: 0 15px 45px rgba(0,0,0,0.15);
+        }
+        .pill-btn {
+            background: #76d4a5; border-radius: 20px; padding: 8px; color: white; font-weight: bold;
+            border: none; box-shadow: 0 4px 0px #459470; transition: all 0.1s; width: 115px; min-height: 75px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; text-align: center; line-height: 1.1;
+        }
+        .pill-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 0px #459470; }
+        .pill-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0px 0px #459470; }
+        .pill-btn:disabled { opacity: 0.4; filter: grayscale(1); }
+
+        .lily-pad {
+            width: 120px; height: 100px; background: #62b88e; border-radius: 45% 55% 50% 50% / 50% 50% 55% 45%;
+            box-shadow: inset 0 -5px 15px rgba(0,0,0,0.15), 0 12px 24px rgba(0,0,0,0.1);
+            cursor: pointer; animation: bobbing 5s ease-in-out infinite; position: absolute;
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px;
+            padding: 10px; z-index: 20; transition: all 0.3s;
+        }
+        .lily-pad.selectable { outline: 4px dashed #fde047; outline-offset: 8px; transform: scale(1.1); z-index: 50; }
+        .lily-pad.is-full { filter: grayscale(0.5) contrast(0.8); cursor: not-allowed; }
+        .lily-pad.shake { animation: shake 0.4s ease-in-out; outline: 4px solid #ef4444 !important; }
+        @keyframes shake { 0%,100% { transform: translateX(0) scale(1.1); } 25% { transform: translateX(-5px) scale(1.1); } 75% { transform: translateX(5px) scale(1.1); } }
+        @keyframes bobbing { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        .frog-sprite { width: 35px; height: 35px; cursor: pointer; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.2)); transition: transform 0.2s; }
+        .frog-sprite:hover { transform: scale(1.2); }
+        .wild-frog { animation: hop-wild 2s ease-in-out infinite; }
+        @keyframes hop-wild { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1) translateY(-5px); } }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+            z-index: 2000; display: none; justify-content: center; align-items: center;
+        }
+        .modal-content, .admin-panel {
+            background: #4fac82; border: 4px solid #fde047; border-radius: 30px;
+            padding: 30px; max-width: 520px; width: 90%; text-align: center;
+        }
+        .admin-panel { background: #1e2937; }
+
+        .floating-text {
+            position: absolute; pointer-events: none; font-weight: 700; font-size: 1.8rem;
+            color: #fde047; text-shadow: 0 4px 0 #4d7c0f; animation: float-up 1.2s ease-out forwards; z-index: 200;
+        }
+        @keyframes float-up { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-120px); } }
+
+        #zen-toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 100px;
+            pointer-events: none; opacity: 0; transition: opacity 1s; z-index: 10001;
+            font-size: 0.9rem; color: white;
+        }
+        .fullscreen-btn {
+            position: fixed; top: 20px; left: 20px; width: 45px; height: 45px;
+            background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.4); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 5000; color: white; transition: all 0.2s;
+        }
+        .input-error { border-color: #ef4444 !important; animation: shake 0.3s; }
+        .save-btn { background: #facc15; color: #1e2937; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div id="title-screen">
+    <div class="title-container">
+        <h1 class="main-title">Frogfriends</h1>
+        <div id="random-subtitle" class="sub-title">Totoro-lly awesome!</div>
+        <br>
+        <button class="start-btn" onclick="startGame()">Start Journey</button>
+    </div>
+    <div class="absolute inset-0 pointer-events-none opacity-40 overflow-hidden" id="title-deco"></div>
+</div>
+
+<div id="zen-exit-detector"></div>
+
+<div id="pond-container" onclick="handlePondClick(event)">
+    <div id="fx-layer"></div>
+    <div id="fish-layer"></div>
+    <div id="spirit-layer"></div>
+    <div id="game-center" class="absolute inset-0">
+        <div id="main-cluster" class="relative w-full h-full">
+            <div class="lily-pad" id="pad-0" onclick="handlePadInteraction(0, event)" style="left: calc(50% - 60px); top: calc(50% - 50px);"></div>
+        </div>
+    </div>
+    <div id="ui-wrapper">
+        <button class="fullscreen-btn ui-element" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+            <svg id="fs-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+        </button>
+
+        <div id="placing-ui" class="fixed top-5 left-1/2 -translate-x-1/2 bg-black/80 px-8 py-4 rounded-3xl border-2 border-yellow-400 z-[3000] text-center hidden pointer-events-auto">
+            <div class="text-xl font-bold text-yellow-300">PLACE NEW LILY PAD</div>
+            <div class="text-sm opacity-80">Click anywhere on the pond (away from UI)</div>
+            <button onclick="cancelPlacement()" class="mt-3 text-xs bg-red-500 px-6 py-2 rounded-full">Cancel</button>
+        </div>
+
+        <div id="zen-toast">Double click / double tap anywhere to return home</div>
+
+        <div class="ui-root">
+            <div class="absolute top-10 left-20 ui-element">
+                <div class="flex items-baseline gap-3">
+                    <span class="text-7xl font-bold drop-shadow-lg" id="score">0</span>
+                    <span class="text-2xl text-yellow-300 font-bold" id="multiplier">x1.0</span>
+                </div>
+                <div class="text-xl opacity-80 uppercase tracking-widest flex items-center gap-2">
+                    <span id="evo-name">Morning Marsh</span>
+                    <span id="weather-icon">☀️</span>
+                </div>
+                <div id="evo-desc" class="text-xs opacity-60 max-w-xs italic leading-tight mt-1">A quiet, humble beginning.</div>
+            </div>
+
+            <div class="absolute top-10 right-10 flex flex-col items-end ui-element">
+                <div class="text-[10px] font-bold opacity-70 mb-1 tracking-widest uppercase">Pond Ascension Level: <span id="evo-level">0</span></div>
+                <div class="w-64 h-3 bg-black/30 rounded-full overflow-hidden border border-white/20">
+                    <div id="evo-bar" class="h-full bg-gradient-to-r from-yellow-200 to-yellow-500 transition-all duration-700" style="width: 0%"></div>
+                </div>
+                <div class="text-xs mt-1 font-bold" id="evo-goal">Goal: 100</div>
+            </div>
+
+            <div class="absolute top-40 right-10 ui-element">
+                <button onclick="toggleZen(true)" class="group bg-white/10 hover:bg-white/20 px-8 py-4 rounded-full border border-white/30 text-lg backdrop-blur-xl transition-all flex items-center gap-3">
+                    <span class="text-2xl animate-pulse">✨</span>
+                    Enter Spirit Realm
+                </button>
+            </div>
+
+            <div class="absolute bottom-10 left-1/2 -translate-x-1/2 ui-element">
+                <div class="ui-panel">
+                    <button id="btn-add-pad" class="pill-btn" onclick="buyPad()">
+                        <span>New Pad</span>
+                        <span class="text-xs mt-1" id="cost-pad">150</span>
+                    </button>
+                    <button id="btn-friend" class="pill-btn" onclick="openFrogMenu()">
+                        <span>Frog Menu</span>
+                        <span class="text-xs mt-1" id="frog-count">Owned: 0</span>
+                    </button>
+                    <button id="btn-click" class="pill-btn" onclick="buyClick()">
+                        <span>Zen Focus</span>
+                        <span class="text-xs mt-1" id="cost-click">250</span>
+                    </button>
+                    <button id="btn-totem" class="pill-btn" onclick="buyTotem()">
+                        <span>Ancient Totem</span>
+                        <span class="text-xs mt-1" id="cost-totem">5,000</span>
+                    </button>
+                    <button onclick="saveGame()" class="pill-btn save-btn">
+                        <span>Save Game</span>
+                    </button>
+                    <button onclick="showLoadModal()" class="pill-btn save-btn">
+                        <span>Load Game</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Load Modal -->
+<div id="load-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h2 class="text-3xl font-bold mb-4">Load Game</h2>
+        <p class="text-yellow-200 mb-4 text-sm">This will completely wipe your current progress.</p>
+        <textarea id="load-data" rows="6" class="w-full bg-black/30 border border-white/30 rounded-2xl p-4 text-white text-sm font-mono resize-none" placeholder="Paste your saved game data here..."></textarea>
+        <div class="flex gap-3 mt-6">
+            <button onclick="closeLoadModal()" class="flex-1 py-4 bg-gray-600 rounded-2xl font-bold">Cancel</button>
+            <button onclick="loadGame()" class="flex-1 py-4 bg-yellow-400 text-green-900 font-bold rounded-2xl">Load & Wipe Current Progress</button>
+        </div>
+    </div>
+</div>
+
+<!-- ADMIN PANEL (Updated with inputs) -->
+<div id="admin-pane" class="modal-overlay" style="display: none;">
+    <div class="admin-panel">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-bold text-yellow-300">🐸 FROGO ADMIN PANEL 🐸</h2>
+            <button onclick="closeAdminPanel()" class="text-4xl opacity-70 hover:opacity-100">&times;</button>
+        </div>
+        <div class="space-y-6 text-left">
+            <div>
+                <label class="block text-sm mb-1">Add Ribbits</label>
+                <div class="flex gap-2">
+                    <input id="admin-ribbits" type="number" value="100000" class="flex-1 bg-black/40 border border-white/30 rounded-xl p-3 text-white">
+                    <button onclick="adminAddRibbitsCustom()" class="bg-green-600 hover:bg-green-500 px-6 rounded-xl font-bold">Add</button>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm mb-1">Spawn Frogs</label>
+                <div class="flex gap-2">
+                    <input id="admin-frogs" type="number" value="10" class="flex-1 bg-black/40 border border-white/30 rounded-xl p-3 text-white">
+                    <button onclick="adminSpawnFrogsCustom()" class="bg-purple-600 hover:bg-purple-500 px-6 rounded-xl font-bold">Spawn</button>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm mb-1">Add Lily Pads</label>
+                <div class="flex gap-2">
+                    <input id="admin-pads" type="number" value="3" class="flex-1 bg-black/40 border border-white/30 rounded-xl p-3 text-white" max="11">
+                    <button onclick="adminAddPadsCustom()" class="bg-blue-600 hover:bg-blue-500 px-6 rounded-xl font-bold">Add</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="adminMaxEvolution()" class="bg-orange-600 hover:bg-orange-500 py-3 rounded-2xl font-bold">Max Evolution</button>
+                <button onclick="adminMaxTotems()" class="bg-red-600 hover:bg-red-500 py-3 rounded-2xl font-bold">Max Totems</button>
+                <button onclick="adminMaxClick()" class="bg-red-600 hover:bg-red-500 py-3 rounded-2xl font-bold">Max Click Power</button>
+                <button onclick="closeAdminPanel()" class="bg-gray-600 hover:bg-gray-500 py-3 rounded-2xl font-bold">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Catch Modal -->
+<div id="catch-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div id="catch-display" class="mb-6"></div>
+        <h2 class="text-3xl font-bold mb-2" id="catch-name">New Friend!</h2>
+        <p class="text-yellow-200 mb-4" id="catch-stats"></p>
+        <div class="mb-6">
+            <label class="block text-xs uppercase opacity-70 mb-1">Name your frog</label>
+            <input type="text" id="frog-name-input" class="w-full bg-black/30 border border-white/20 rounded-xl p-3 text-center text-xl outline-none" placeholder="Enter name..." maxlength="15">
+        </div>
+        <button onclick="confirmCatch()" class="w-full bg-yellow-400 text-green-900 font-bold py-4 rounded-xl text-xl hover:bg-yellow-300 transition-colors">WELCOME HOME</button>
+    </div>
+</div>
+
+<!-- Frog Menu Modal -->
+<div id="frog-menu-modal" class="modal-overlay">
+    <div class="modal-content !max-w-2xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-bold">Your Pond Friends</h2>
+            <button onclick="closeFrogMenu()" class="text-4xl opacity-50 hover:opacity-100">&times;</button>
+        </div>
+        <div id="frogs-list" class="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2"></div>
+    </div>
+</div>
+
+<script>
+    const MAX_FROGS_PER_PAD = 4;
+   
+    const PHRASES = ["Totoro-lly awesome!", "Peaceful hopping", "The water is fine", "Zen ripples", "Spirit of the pond", "Leap of faith", "Don't worry, be hoppy", "Lily pad lounging", "Ribbiting adventure", "The final ribbit"];
+    const BANNED_TERMS = ['fuck', 'shit', 'ass', 'bitch', 'cunt', 'dick', 'pussy', 'nigger', 'faggot', 'cock', 'bastard', 'slut', 'whore'];
+    const SPIRIT_NAMES = ["Komorebi", "Susuwatari", "Kodama", "Teto", "Yubaba", "Calcifer", "Jiji", "Haku", "Boh", "Neko", "Zen", "Mochi", "Soot", "Moss", "Rain", "Dew", "Leaf", "Mist", "Spirit"];
+    const EVO_PREFIXES = ["Silent", "Dappled", "Golden", "Radiant", "Mist-Bound", "Eternal", "Hallowed", "Dancing", "Prismatic", "Abyssal", "Starlit", "Whispering", "Velvet", "Glimmering"];
+    const EVO_NOUN = ["Marsh", "Reeds", "Valley", "Grotto", "Sanctuary", "Waters", "Spring", "Lagoon", "Hollow", "Glade", "Zenith", "Reflection", "Basin", "Meadow"];
+    const EVO_DESCS = ["The spirits begin to acknowledge your presence.", "A soft light dances across the surface of the water.", "The air feels heavy with ancient magic.", "Butterflies of light flutter in the distance.", "Everything is perfectly still, and perfectly alive."];
+
+    const FROG_TYPES = Array.from({ length: 50 }, (_, i) => ({
+        id: i,
+        species: `Frog Spirit #${i + 1}`,
+        color: ['#86efac', '#f87171', '#60a5fa', '#fbbf24', '#c084fc', '#f472b6', '#ffffff', '#4ade80'][i % 8],
+        bonusWeather: ['idle', 'rain', 'snow', 'lightning'][i % 4],
+        bonusMult: 1.1 + (i * 0.05),
+        pattern: i % 3 === 0 ? 'dots' : i % 3 === 1 ? 'stripes' : 'none'
+    }));
+
+    // Zelda Frog (Link) - based on the plushie
+    const ZELDA_FROG = {
+        id: 999999,
+        typeId: 0,
+        name: "Link",
+        padIndex: -1,
+        isZelda: true
+    };
+
+    let state = {
+        ribbits: 0,
+        totalInEvo: 0,
+        evolution: 0,
+        pads: 1,
+        clickLv: 1,
+        totems: 0,
+        mult: 1.0,
+        zenMult: 1.0,
+        evoGoal: 100,
+        zenMode: false,
+        weather: 'idle',
+        myFrogs: [],
+        currentCatch: null,
+        placingFrogId: null,
+        gameStarted: false,
+        lastTapTime: 0,
+        isPlacingPad: false
+    };
+
+    function getFrogSVG(type, isZelda = false) {
+        if (isZelda) {
+            return `<svg viewBox="0 0 100 100" style="width:100%; height:100%;">
+                <ellipse cx="50" cy="52" rx="34" ry="32" fill="#60a5fa" stroke="#1e40af" stroke-width="4"/>
+                <circle cx="38" cy="38" r="11" fill="#fcd34d"/>
+                <circle cx="62" cy="38" r="11" fill="#fcd34d"/>
+                <circle cx="38" cy="38" r="5" fill="#1e3a8a"/>
+                <circle cx="62" cy="38" r="5" fill="#1e3a8a"/>
+                <path d="M30 65 Q50 78 70 65" fill="none" stroke="#1e3a8a" stroke-width="4" stroke-linecap="round"/>
+                <path d="M25 25 Q50 12 75 25" fill="#fcd34d" opacity="0.9"/>
+            </svg>`;
+        }
+        let pattern = '';
+        if (type.pattern === 'dots') pattern = `<circle cx="35" cy="40" r="3" fill="white" opacity="0.4"/><circle cx="65" cy="40" r="3" fill="white" opacity="0.4"/>`;
+        if (type.pattern === 'stripes') pattern = `<rect x="30" y="45" width="40" height="2" fill="white" opacity="0.3"/><rect x="30" y="55" width="40" height="2" fill="white" opacity="0.3"/>`;
+        return `<svg viewBox="0 0 100 100" style="width:100%; height:100%;">
+            <ellipse cx="50" cy="55" rx="35" ry="30" fill="${type.color}" stroke="rgba(0,0,0,0.1)" stroke-width="2"/>
+            <circle cx="35" cy="35" r="10" fill="${type.color}"/>
+            <circle cx="65" cy="35" r="10" fill="${type.color}"/>
+            <circle cx="35" cy="35" r="4" fill="white"/><circle cx="35" cy="35" r="1.5" fill="black"/>
+            <circle cx="65" cy="35" r="4" fill="white"/><circle cx="65" cy="35" r="1.5" fill="black"/>
+            <path d="M35 70 Q50 80 65 70" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="3" stroke-linecap="round"/>
+            ${pattern}
+        </svg>`;
+    }
+
+    function resetGameState() {
+        state.ribbits = 0;
+        state.totalInEvo = 0;
+        state.evolution = 0;
+        state.pads = 1;
+        state.clickLv = 1;
+        state.totems = 0;
+        state.mult = 1.0;
+        state.zenMult = 1.0;
+        state.evoGoal = 100;
+        state.zenMode = false;
+        state.weather = 'idle';
+        state.myFrogs = [];
+        state.currentCatch = null;
+        state.placingFrogId = null;
+        state.isPlacingPad = false;
+        state.lastTapTime = 0;
+
+        document.querySelectorAll('.lily-pad').forEach((pad, index) => {
+            if (index > 0) pad.remove();
+        });
+        document.getElementById('pond-container').style.setProperty('--bg-top', '#a7f3d0');
+        document.getElementById('pond-container').style.setProperty('--bg-bottom', '#4fac82');
+        document.getElementById('fx-layer').innerHTML = '';
+        document.getElementById('spirit-layer').innerHTML = '';
+        cancelPlacement();
+    }
+
+    function startGame() {
+        state.gameStarted = true;
+        const ts = document.getElementById('title-screen');
+        ts.style.opacity = '0';
+        ts.style.transform = 'scale(1.1)';
+        document.getElementById('pond-container').classList.add('visible');
+        setTimeout(() => { ts.style.display = 'none'; }, 1500);
+        updateUI();
+    }
+
+    function pickRandomSubtitle() {
+        const sub = document.getElementById('random-subtitle');
+        sub.innerText = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+    }
+
+    function checkProfanity(text) {
+        if (!text) return false;
+        const clean = text.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return BANNED_TERMS.some(term => clean.includes(term));
+    }
+
+    function generateEvoName(level) {
+        if (level === 0) return "Morning Marsh";
+        const p = EVO_PREFIXES[Math.floor((level * 7) % EVO_PREFIXES.length)];
+        const n = EVO_NOUN[Math.floor((level * 13) % EVO_NOUN.length)];
+        return `${p} ${n}`;
+    }
+
+    function generateEvoColor(level) {
+        const hue1 = (140 + (level * 25)) % 360;
+        const hue2 = (hue1 + 40) % 360;
+        return [`hsl(${hue1}, 50%, 80%)`, `hsl(${hue2}, 40%, 45%)`];
+    }
+
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+            document.getElementById('fs-icon').innerHTML = '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>';
+        } else {
+            document.exitFullscreen();
+            document.getElementById('fs-icon').innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>';
+        }
+    }
+
+    function updateUI() {
+        const frogBonusMult = state.myFrogs.reduce((acc, f) => {
+            const type = FROG_TYPES[f.typeId];
+            const active = (type.bonusWeather === state.weather || type.bonusWeather === 'idle') && f.padIndex !== -1;
+            return acc + (active ? type.bonusMult - 1 : 0);
+        }, 1);
+        const totalMult = state.mult * state.zenMult * frogBonusMult;
+
+        document.getElementById('score').innerText = Math.floor(state.ribbits).toLocaleString();
+        document.getElementById('multiplier').innerText = `x${totalMult.toFixed(1)}`;
+        document.getElementById('evo-name').innerText = generateEvoName(state.evolution);
+        document.getElementById('evo-level').innerText = state.evolution;
+        document.getElementById('evo-goal').innerText = `Goal: ${state.evoGoal.toLocaleString()}`;
+        document.getElementById('evo-bar').style.width = Math.min(100, (state.totalInEvo / state.evoGoal) * 100) + '%';
+        document.getElementById('frog-count').innerText = `Owned: ${state.myFrogs.length}`;
+
+        const pCost = Math.floor(150 * Math.pow(2.2, state.pads - 1));
+        const cCost = Math.floor(250 * Math.pow(1.7, state.clickLv - 1));
+        const tCost = Math.floor(5000 * Math.pow(3, state.totems));
+
+        document.getElementById('cost-pad').innerText = state.pads < 12 ? pCost.toLocaleString() : "MAX";
+        document.getElementById('cost-click').innerText = cCost.toLocaleString();
+        document.getElementById('cost-totem').innerText = tCost.toLocaleString();
+
+        document.getElementById('btn-add-pad').disabled = state.ribbits < pCost || state.pads >= 12;
+        document.getElementById('btn-click').disabled = state.ribbits < cCost;
+        document.getElementById('btn-totem').disabled = state.ribbits < tCost;
+    }
+
+    function gainRibbits(amt) {
+        state.ribbits += amt;
+        state.totalInEvo += amt;
+        if (state.totalInEvo >= state.evoGoal) evolve();
+        updateUI();
+    }
+
+    function evolve() {
+        state.evolution++;
+        state.totalInEvo = 0;
+        state.evoGoal = Math.floor(state.evoGoal * 2.8);
+        state.mult += 0.3 + (state.evolution * 0.08);
+        const pair = generateEvoColor(state.evolution);
+        document.getElementById('pond-container').style.setProperty('--bg-top', pair[0]);
+        document.getElementById('pond-container').style.setProperty('--bg-bottom', pair[1]);
+        document.getElementById('evo-desc').innerText = EVO_DESCS[Math.floor(Math.random() * EVO_DESCS.length)];
+        spawnSpiritBurst();
+        randomizeWeather();
+    }
+
+    // NERFED MONEY SYSTEM
+    function buyPad() {
+        const cost = Math.floor(150 * Math.pow(2.5, state.pads - 1));
+        if (state.ribbits < cost || state.pads >= 12) return;
+        state.ribbits -= cost;
+        state.isPlacingPad = true;
+        document.getElementById('placing-ui').classList.remove('hidden');
+        updateUI();
+    }
+
+    function buyClick() { 
+        const c = Math.floor(250 * Math.pow(1.9, state.clickLv - 1)); 
+        if(state.ribbits >= c){ state.ribbits -= c; state.clickLv++; updateUI(); }
+    }
+
+    function buyTotem() { 
+        const c = Math.floor(5000 * Math.pow(4, state.totems)); 
+        if(state.ribbits >= c){ state.ribbits -= c; state.totems++; updateUI(); }
+    }
+
+    // LILY PAD PLACEMENT
+    function handlePondClick(e) {
+        if (state.zenMode || !state.gameStarted) return;
+        if (state.isPlacingPad && !e.target.closest('.ui-root') && !e.target.closest('#placing-ui')) {
+            placeNewLilyPad(e);
+            return;
+        }
+        spawnRipple(e.clientX, e.clientY);
+    }
+
+    function placeNewLilyPad(e) {
+        if (!state.isPlacingPad) return;
+        const rect = document.getElementById('pond-container').getBoundingClientRect();
+        let clickX = e.clientX - rect.left;
+        let clickY = e.clientY - rect.top;
+        clickX = Math.max(70, Math.min(rect.width - 70, clickX));
+        clickY = Math.max(60, Math.min(rect.height - 60, clickY));
+
+        const padId = state.pads;
+        const pad = document.createElement('div');
+        pad.className = 'lily-pad';
+        pad.id = `pad-${padId}`;
+        pad.style.left = `${clickX - 60}px`;
+        pad.style.top = `${clickY - 50}px`;
+        pad.onclick = (ev) => handlePadInteraction(padId, ev);
+        document.getElementById('main-cluster').appendChild(pad);
+       
+        state.pads++;
+        state.isPlacingPad = false;
+        document.getElementById('placing-ui').classList.add('hidden');
+        updateUI();
+    }
+
+    function cancelPlacement() {
+        state.isPlacingPad = false;
+        document.getElementById('placing-ui').classList.add('hidden');
+    }
+
+    // SAVE / LOAD
+    function saveGame() {
+        const saveData = { v: 1, r: Math.floor(state.ribbits), t: state.totalInEvo, e: state.evolution, p: state.pads, c: state.clickLv, o: state.totems, m: state.mult, g: state.evoGoal, f: state.myFrogs };
+        const jsonStr = JSON.stringify(saveData);
+        const checksum = jsonStr.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 999999;
+        const finalSave = jsonStr + "|" + checksum;
+        navigator.clipboard.writeText(finalSave).then(() => {
+            const toast = document.getElementById('zen-toast');
+            toast.textContent = "✅ Save copied to clipboard!";
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; toast.textContent = "Double click / double tap anywhere to return home"; }, 3000);
+        });
+    }
+
+    function showLoadModal() {
+        document.getElementById('load-modal').style.display = 'flex';
+        document.getElementById('load-data').focus();
+    }
+
+    function closeLoadModal() {
+        document.getElementById('load-modal').style.display = 'none';
+    }
+
+    function loadGame() {
+        const input = document.getElementById('load-data').value.trim();
+        if (!input) return alert("Please paste something!");
+
+        if (input === "code14") {
+            closeLoadModal();
+            document.getElementById('admin-panel').style.display = 'flex';
+            return;
+        }
+
+        if (input === "[frogo]zelda") {
+            closeLoadModal();
+            const linkFrog = {...ZELDA_FROG, id: Date.now()};
+            state.myFrogs.push(linkFrog);
+            refreshPondFrogs();
+            updateUI();
+            alert("✅ Link the Zelda frog has been added to your pond!");
+            return;
+        }
+
+        // Normal save load
+        try {
+            const parts = input.split("|");
+            const jsonStr = parts[0];
+
+            const decoded = JSON.parse(jsonStr);
+            if (decoded.v !== 1) throw new Error();
+
+            resetGameState();
+
+            state.ribbits = decoded.r || 0;
+            state.totalInEvo = decoded.t || 0;
+            state.evolution = decoded.e || 0;
+            state.pads = Math.max(1, decoded.p || 1);
+            state.clickLv = decoded.c || 1;
+            state.totems = decoded.o || 0;
+            state.mult = decoded.m || 1.0;
+            state.evoGoal = decoded.g || 100;
+            state.myFrogs = decoded.f || [];
+
+            const mainCluster = document.getElementById('main-cluster');
+            for (let i = 1; i < state.pads; i++) {
+                if (!document.getElementById(`pad-${i}`)) {
+                    const pad = document.createElement('div');
+                    pad.className = 'lily-pad';
+                    pad.id = `pad-${i}`;
+                    pad.style.left = (15 + Math.random() * 70) + '%';
+                    pad.style.top = (15 + Math.random() * 70) + '%';
+                    pad.onclick = (e) => handlePadInteraction(i, e);
+                    mainCluster.appendChild(pad);
+                }
+            }
+
+            closeLoadModal();
+            refreshPondFrogs();
+            updateUI();
+
+            const toast = document.getElementById('zen-toast');
+            toast.textContent = "✅ Progress loaded successfully!";
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; toast.textContent = "Double click / double tap anywhere to return home"; }, 3000);
+        } catch (e) {
+            alert("Invalid save data!");
+        }
+    }
+
+    function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; }
+
+    function adminAddRibbitsCustom() {
+        const amt = parseFloat(document.getElementById('admin-ribbits').value) || 0;
+        if (amt > 0) gainRibbits(amt);
+    }
+
+    function adminSpawnFrogsCustom() {
+        const count = parseInt(document.getElementById('admin-frogs').value) || 1;
+        for (let i = 0; i < count; i++) {
+            const type = FROG_TYPES[Math.floor(Math.random() * FROG_TYPES.length)];
+            state.myFrogs.push({ id: Date.now() + i, typeId: type.id, name: SPIRIT_NAMES[Math.floor(Math.random() * SPIRIT_NAMES.length)], padIndex: -1 });
+        }
+        updateUI();
+    }
+
+    function adminAddPadsCustom() {
+        const count = parseInt(document.getElementById('admin-pads').value) || 1;
+        for (let i = 0; i < count && state.pads < 12; i++) {
+            const padId = state.pads;
+            const pad = document.createElement('div');
+            pad.className = 'lily-pad';
+            pad.id = `pad-${padId}`;
+            pad.style.left = (15 + Math.random() * 70) + '%';
+            pad.style.top = (15 + Math.random() * 70) + '%';
+            pad.onclick = (e) => handlePadInteraction(padId, e);
+            document.getElementById('main-cluster').appendChild(pad);
+            state.pads++;
+        }
+        updateUI();
+    }
+
+    function adminMaxEvolution() { while (state.evolution < 30) evolve(); }
+    function adminMaxTotems() { state.totems = 50; updateUI(); }
+    function adminMaxClick() { state.clickLv = 30; updateUI(); }
+
+    // Rest of your original functions (handlePadInteraction, spawnWildFrog, initiateCatch, etc.)
+    function handlePadInteraction(padIdx, e) {
+        if (state.zenMode || !state.gameStarted || state.isPlacingPad) return;
+        e.stopPropagation();
+        if (state.placingFrogId !== null) {
+            const frogsOnThisPad = state.myFrogs.filter(f => f.padIndex === padIdx).length;
+            if (frogsOnThisPad < MAX_FROGS_PER_PAD) confirmPlacement(padIdx);
+            else {
+                const el = document.getElementById(`pad-${padIdx}`);
+                el.classList.add('shake');
+                setTimeout(() => el.classList.remove('shake'), 400);
+            }
+            return;
+        }
+        const power = 5 * Math.pow(1.5, state.clickLv - 1) * state.mult;
+        gainRibbits(power);
+        spawnText(e.clientX, e.clientY, `+${Math.floor(power)}`);
+        spawnRipple(e.clientX, e.clientY);
+    }
+
+    function spawnWildFrog(padIdx) {
+        if (!state.gameStarted) return;
+        const pad = document.getElementById(`pad-${padIdx}`);
+        if (!pad || pad.querySelectorAll('.frog-sprite').length > 0) return;
+        const type = FROG_TYPES[Math.floor(Math.random() * FROG_TYPES.length)];
+        const frogEl = document.createElement('div');
+        frogEl.className = 'frog-sprite wild-frog';
+        frogEl.innerHTML = getFrogSVG(type);
+        frogEl.onclick = (e) => { e.stopPropagation(); initiateCatch(type, padIdx); };
+        pad.appendChild(frogEl);
+        pad.dataset.spawning = 'false';
+    }
+
+    function initiateCatch(type, padIdx) {
+        state.currentCatch = { type, padIdx };
+        document.getElementById('catch-display').innerHTML = `<div class="w-32 h-32 mx-auto">${getFrogSVG(type)}</div>`;
+        document.getElementById('catch-name').innerText = type.species;
+        document.getElementById('catch-stats').innerText = `Bonus: ${type.bonusWeather.toUpperCase()} (+${((type.bonusMult - 1) * 100).toFixed(0)}%)`;
+        document.getElementById('frog-name-input').value = "";
+        document.getElementById('catch-modal').style.display = 'flex';
+    }
+
+    function confirmCatch() {
+        const input = document.getElementById('frog-name-input');
+        const inputName = input.value.trim();
+        if (checkProfanity(inputName)) {
+            input.classList.add('input-error');
+            input.value = SPIRIT_NAMES[Math.floor(Math.random() * SPIRIT_NAMES.length)];
+            return;
+        }
+        const finalName = inputName || state.currentCatch.type.species;
+        state.myFrogs.push({ id: Date.now(), typeId: state.currentCatch.type.id, name: finalName, padIndex: -1 });
+        const pad = document.getElementById(`pad-${state.currentCatch.padIdx}`);
+        if (pad) {
+            const wild = pad.querySelector('.wild-frog');
+            if(wild) wild.remove();
+        }
+        document.getElementById('catch-modal').style.display = 'none';
+        state.currentCatch = null;
+        updateUI();
+    }
+
+    function startPlacement(frogId) {
+        state.placingFrogId = frogId;
+        closeFrogMenu();
+        document.querySelectorAll('.lily-pad').forEach((pad, idx) => {
+            const count = state.myFrogs.filter(f => f.padIndex === idx).length;
+            if (count < MAX_FROGS_PER_PAD) pad.classList.add('selectable');
+            else pad.classList.add('is-full');
+        });
+    }
+
+    function confirmPlacement(padIdx) {
+        const frog = state.myFrogs.find(f => f.id === state.placingFrogId);
+        if (frog) {
+            frog.padIndex = padIdx;
+            document.querySelectorAll('.lily-pad').forEach(p => {
+                p.classList.remove('selectable');
+                p.classList.remove('is-full');
+            });
+            state.placingFrogId = null;
+            refreshPondFrogs();
+            updateUI();
+        }
+    }
+
+    function refreshPondFrogs() {
+        document.querySelectorAll('.lily-pad').forEach(p => {
+            const wild = p.querySelector('.wild-frog');
+            p.innerHTML = '';
+            if(wild) p.appendChild(wild);
+        });
+        state.myFrogs.forEach(f => {
+            if (f.padIndex !== -1) {
+                const pad = document.getElementById(`pad-${f.padIndex}`);
+                if (pad) {
+                    const sprite = document.createElement('div');
+                    sprite.className = 'frog-sprite';
+                    sprite.innerHTML = getFrogSVG(FROG_TYPES[f.typeId], f.isZelda);
+                    sprite.title = f.name;
+                    pad.appendChild(sprite);
+                }
+            }
+        });
+    }
+
+    function handleSpiritRealmExit(e) {
+        if (!state.zenMode) return;
+        const now = Date.now();
+        if (now - state.lastTapTime < 280) toggleZen(false);
+        state.lastTapTime = now;
+    }
+
+    function toggleZen(active) {
+        state.zenMode = active;
+        document.body.classList.toggle('zen-active', active);
+        const detector = document.getElementById('zen-exit-detector');
+        if (active) {
+            document.getElementById('zen-toast').style.opacity = '1';
+            setTimeout(() => document.getElementById('zen-toast').style.opacity = '0', 2800);
+            startZenEcosystem();
+            detector.ondblclick = handleSpiritRealmExit;
+            detector.ontouchstart = handleSpiritRealmExit;
+        } else {
+            refreshPondFrogs();
+            detector.ondblclick = null;
+            detector.ontouchstart = null;
+        }
+        updateUI();
+    }
+
+    function startZenEcosystem() { state.zenMult = 2.0; randomizeWeather(); }
+    function stopZenEcosystem() { state.zenMult = 1.0; state.weather = 'idle'; document.getElementById('weather-icon').innerText = '☀️'; }
+
+    function randomizeWeather() {
+        const types = ['idle', 'rain', 'snow'];
+        state.weather = types[Math.floor(Math.random() * types.length)];
+        const fx = document.getElementById('fx-layer'); fx.innerHTML = '';
+        const icon = document.getElementById('weather-icon');
+        if (state.weather === 'rain') {
+            icon.innerText = '🌧️';
+            for(let i=0; i<40; i++) {
+                const d = document.createElement('div'); d.className = 'rain-drop';
+                d.style.left = Math.random() * 100 + 'vw'; d.style.animationDelay = Math.random() + 's';
+                fx.appendChild(d);
+            }
+        } else if (state.weather === 'snow') {
+            icon.innerText = '❄️';
+            for(let i=0; i<30; i++) {
+                const f = document.createElement('div'); f.className = 'snow-flake';
+                const s = 4 + Math.random()*6; f.style.width = s+'px'; f.style.height = s+'px';
+                f.style.left = Math.random()*100+'vw'; f.style.animationDelay = Math.random()*3+'s';
+                fx.appendChild(f);
+            }
+        } else { icon.innerText = '☀️'; }
+    }
+
+    function spawnSpiritBurst() {
+        for(let i=0; i<15; i++) {
+            const orb = document.createElement('div');
+            orb.className = 'spirit-orb';
+            orb.style.left = (20 + Math.random() * 60) + 'vw';
+            orb.style.top = (20 + Math.random() * 60) + 'vh';
+            document.getElementById('spirit-layer').appendChild(orb);
+            setTimeout(() => orb.remove(), 10000);
+        }
+    }
+
+    function spawnRipple(x, y) {
+        const r = document.createElement('div');
+        r.style.cssText = `position:absolute; width:10px; height:10px; border:2px solid rgba(255,255,255,0.4); border-radius:50%; pointer-events:none; left:${x}px; top:${y}px; transition: all 1s ease-out; opacity:0.6; z-index:1;`;
+        document.body.appendChild(r);
+        setTimeout(() => { r.style.transform = "scale(15)"; r.style.opacity = "0"; }, 20);
+        setTimeout(() => r.remove(), 1000);
+    }
+
+    function spawnText(x, y, txt) {
+        const t = document.createElement('div');
+        t.className = 'floating-text';
+        t.innerText = txt;
+        t.style.left = x + 'px';
+        t.style.top = y + 'px';
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 1200);
+    }
+
+    function openFrogMenu() {
+        const list = document.getElementById('frogs-list');
+        list.innerHTML = state.myFrogs.length === 0 ? `<div class="text-center opacity-50 py-10">No frogs yet. Wait for a visitor!</div>` : '';
+        state.myFrogs.forEach(frog => {
+            const type = FROG_TYPES[frog.typeId];
+            const div = document.createElement('div');
+            div.className = 'bg-white/10 rounded-2xl p-4 mb-2 flex items-center gap-4';
+            div.innerHTML = `
+                <div class="w-16 h-16">${getFrogSVG(type, frog.isZelda)}</div>
+                <div class="flex-1">
+                    <div class="font-bold text-xl">${frog.name}</div>
+                    <div class="text-xs text-yellow-200 uppercase">${frog.isZelda ? 'Legendary' : type.species} • Bonus: ${type.bonusWeather}</div>
+                </div>
+                <div>
+                    ${frog.padIndex !== -1 ? `<button onclick="removeFromPond(${frog.id})" class="bg-red-500 px-4 py-2 rounded-xl font-bold">Recall</button>` : `<button onclick="startPlacement(${frog.id})" class="bg-yellow-500 text-green-900 px-4 py-2 rounded-xl font-bold">Place</button>`}
+                </div>`;
+            list.appendChild(div);
+        });
+        document.getElementById('frog-menu-modal').style.display = 'flex';
+    }
+
+    function closeFrogMenu() { document.getElementById('frog-menu-modal').style.display = 'none'; }
+    function removeFromPond(frogId) {
+        const f = state.myFrogs.find(x => x.id === frogId);
+        if(f) f.padIndex = -1;
+        refreshPondFrogs();
+        openFrogMenu();
+        updateUI();
+    }
+
+    function initTitleDeco() {
+        const deco = document.getElementById('title-deco');
+        for(let i=0; i<15; i++) {
+            const leaf = document.createElement('div');
+            leaf.style.cssText = `position:absolute; width:40px; height:40px; background:#62b88e; border-radius:50% 0 50% 50%; left:${Math.random()*100}%; top:${Math.random()*100}%; opacity:${0.2 + Math.random()*0.3}; transform: rotate(${Math.random()*360}deg);`;
+            deco.appendChild(leaf);
+        }
+    }
+
+    setInterval(() => {
+        if (!state.gameStarted) return;
+        let passive = state.totems * 8;
+        state.myFrogs.forEach(f => { if (f.padIndex !== -1) passive += 1; });
+        if (passive > 0) gainRibbits((passive * state.mult * state.zenMult) / 20);
+
+        for (let i = 0; i < state.pads; i++) {
+            const p = document.getElementById(`pad-${i}`);
+            if (p && p.querySelectorAll('.frog-sprite').length === 0 && p.dataset.spawning !== 'true') {
+                p.dataset.spawning = 'true';
+                setTimeout(() => spawnWildFrog(i), 4000 + Math.random() * 8000);
+            }
+        }
+    }, 150);
+
+    window.onload = () => {
+        pickRandomSubtitle();
+        initTitleDeco();
+        updateUI();
+    };
+</script>
+</body>
+  </html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimum-scale=1.0">
+    <title>Frogfriends</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&display=swap');
+      
+        :root {
+            --bg-top: #a7f3d0;
+            --bg-bottom: #4fac82;
+            --accent: #fde047;
+            --celestial-top: #1e293b;
+            --celestial-bottom: #0f172a;
+        }
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #4fac82;
+            font-family: 'Gaegu', cursive;
+            user-select: none;
+            touch-action: none;
+            color: white;
+        }
+        #title-screen {
+            position: fixed; inset: 0; z-index: 10000;
+            background: linear-gradient(to bottom, #a7f3d0, #4fac82);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 1.5s ease-out, transform 1.5s ease-out;
+        }
+        .title-container { text-align: center; animation: float-title 4s ease-in-out infinite; }
+        .main-title { font-size: 6rem; font-weight: 700; color: white; text-shadow: 0 8px 0px rgba(0,0,0,0.1); line-height: 0.8; margin-bottom: 10px; }
+        .sub-title {
+            color: #fde047; font-size: 1.8rem; font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2); margin-bottom: 40px;
+            animation: pulse-text 3s ease-in-out infinite; display: inline-block;
+        }
+        @keyframes pulse-text { 0%,100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(1.15); opacity: 1; } }
+        @keyframes float-title { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        .start-btn {
+            background: white; color: #4fac82; padding: 15px 50px; border-radius: 100px;
+            font-size: 2rem; font-weight: 700; cursor: pointer; box-shadow: 0 10px 0px #3d8a68;
+            transition: all 0.2s; margin-top: 20px;
+        }
+        .start-btn:hover { transform: translateY(-3px); box-shadow: 0 13px 0px #3d8a68; }
+        .start-btn:active { transform: translateY(5px); box-shadow: 0 0px 0px #3d8a68; }
+
+        #pond-container {
+            position: relative; width: 100vw; height: 100vh;
+            background: linear-gradient(to bottom, var(--bg-top) 0%, var(--bg-bottom) 100%);
+            overflow: hidden; transition: background 4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer; opacity: 0;
+            touch-action: none;
+        }
+        #pond-container.visible { opacity: 1; }
+        body.zen-active #pond-container {
+            background: linear-gradient(to bottom, var(--celestial-top) 0%, var(--celestial-bottom) 100%) !important;
+        }
+        #zen-exit-detector { position: fixed; inset: 0; z-index: 9999; display: none; cursor: zoom-out; }
+        body.zen-active #zen-exit-detector { display: block; }
+
+        #fx-layer, #fish-layer, #spirit-layer { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+        .rain-drop { position: absolute; background: rgba(255,255,255,0.4); width: 1px; height: 20px; pointer-events: none; animation: rain-fall 0.8s linear infinite; }
+        @keyframes rain-fall { to { transform: translateY(100vh); } }
+        .snow-flake { position: absolute; background: white; border-radius: 50%; pointer-events: none; animation: snow-fall 3s linear infinite; }
+        @keyframes snow-fall { to { transform: translateY(100vh) rotate(360deg); } }
+        .spirit-orb {
+            position: absolute; width: 8px; height: 8px; background: white; border-radius: 50%;
+            filter: blur(4px); box-shadow: 0 0 10px rgba(255,255,255,0.8); animation: drift 10s linear infinite; opacity: 0.6;
+        }
+        @keyframes drift { 0% { transform: translateY(0) translateX(0); opacity: 0; } 20% { opacity: 0.6; } 100% { transform: translateY(-100vh) translateX(50px); opacity: 0; } }
+
+        .ui-root { position: absolute; inset: 0; pointer-events: none; z-index: 100; }
+        .ui-root > * { pointer-events: auto; }
+        .ui-element { transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1), transform 1.5s; }
+        .zen-active .ui-element { opacity: 0 !important; pointer-events: none !important; transform: scale(0.9) translateY(20px); }
+
+        .ui-panel {
+            background: rgba(255,255,255,0.15); backdrop-filter: blur(16px); border-radius: 40px;
+            border: 1px solid rgba(255,255,255,0.3); padding: 20px; display: flex; gap: 12px;
+            box-shadow: 0 15px 45px rgba(0,0,0,0.15);
+        }
+        .pill-btn {
+            background: #76d4a5; border-radius: 20px; padding: 8px; color: white; font-weight: bold;
+            border: none; box-shadow: 0 4px 0px #459470; transition: all 0.1s; width: 115px; min-height: 75px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; text-align: center; line-height: 1.1;
+        }
+        .pill-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 0px #459470; }
+        .pill-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0px 0px #459470; }
+        .pill-btn:disabled { opacity: 0.4; filter: grayscale(1); }
+
+        .lily-pad {
+            width: 120px; height: 100px; background: #62b88e; border-radius: 45% 55% 50% 50% / 50% 50% 55% 45%;
+            box-shadow: inset 0 -5px 15px rgba(0,0,0,0.15), 0 12px 24px rgba(0,0,0,0.1);
+            cursor: pointer; animation: bobbing 5s ease-in-out infinite; position: absolute;
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px;
+            padding: 10px; z-index: 20; transition: all 0.3s;
+        }
+        .lily-pad.selectable { outline: 4px dashed #fde047; outline-offset: 8px; transform: scale(1.1); z-index: 50; }
+        .lily-pad.is-full { filter: grayscale(0.5) contrast(0.8); cursor: not-allowed; }
+        .lily-pad.shake { animation: shake 0.4s ease-in-out; outline: 4px solid #ef4444 !important; }
+        @keyframes shake { 0%,100% { transform: translateX(0) scale(1.1); } 25% { transform: translateX(-5px) scale(1.1); } 75% { transform: translateX(5px) scale(1.1); } }
+        @keyframes bobbing { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        .frog-sprite { width: 35px; height: 35px; cursor: pointer; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.2)); transition: transform 0.2s; }
+        .frog-sprite:hover { transform: scale(1.2); }
+        .wild-frog { animation: hop-wild 2s ease-in-out infinite; }
+        @keyframes hop-wild { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1) translateY(-5px); } }
+
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+            z-index: 2000; display: none; justify-content: center; align-items: center;
+        }
+        .modal-content, .admin-panel {
+            background: #4fac82; border: 4px solid #fde047; border-radius: 30px;
+            padding: 30px; max-width: 520px; width: 90%; text-align: center;
+        }
+        .admin-panel { background: #1e2937; }
+
+        .floating-text {
+            position: absolute; pointer-events: none; font-weight: 700; font-size: 1.8rem;
+            color: #fde047; text-shadow: 0 4px 0 #4d7c0f; animation: float-up 1.2s ease-out forwards; z-index: 200;
+        }
+        @keyframes float-up { 0% { opacity: 0; transform: translateY(0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translateY(-120px); } }
+
+        #zen-toast {
+            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 100px;
+            pointer-events: none; opacity: 0; transition: opacity 1s; z-index: 10001;
+            font-size: 0.9rem; color: white;
+        }
+        .fullscreen-btn {
+            position: fixed; top: 20px; left: 20px; width: 45px; height: 45px;
+            background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.4); border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 5000; color: white; transition: all 0.2s;
+        }
+        .input-error { border-color: #ef4444 !important; animation: shake 0.3s; }
+        .save-btn { background: #facc15; color: #1e2937; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div id="title-screen">
+    <div class="title-container">
+        <h1 class="main-title">Frogfriends</h1>
+        <div id="random-subtitle" class="sub-title">Totoro-lly awesome!</div>
+        <br>
+        <button class="start-btn" onclick="startGame()">Start Journey</button>
+    </div>
+    <div class="absolute inset-0 pointer-events-none opacity-40 overflow-hidden" id="title-deco"></div>
+</div>
+
+<div id="zen-exit-detector"></div>
+
+<div id="pond-container" onclick="handlePondClick(event)">
+    <div id="fx-layer"></div>
+    <div id="fish-layer"></div>
+    <div id="spirit-layer"></div>
+    <div id="game-center" class="absolute inset-0">
+        <div id="main-cluster" class="relative w-full h-full">
+            <div class="lily-pad" id="pad-0" onclick="handlePadInteraction(0, event)" style="left: calc(50% - 60px); top: calc(50% - 50px);"></div>
+        </div>
+    </div>
+    <div id="ui-wrapper">
+        <button class="fullscreen-btn ui-element" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+            <svg id="fs-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+        </button>
+
+        <div id="placing-ui" class="fixed top-5 left-1/2 -translate-x-1/2 bg-black/80 px-8 py-4 rounded-3xl border-2 border-yellow-400 z-[3000] text-center hidden pointer-events-auto">
+            <div class="text-xl font-bold text-yellow-300">PLACE NEW LILY PAD</div>
+            <div class="text-sm opacity-80">Click anywhere on the pond (away from UI)</div>
+            <button onclick="cancelPlacement()" class="mt-3 text-xs bg-red-500 px-6 py-2 rounded-full">Cancel</button>
+        </div>
+
+        <div id="zen-toast">Double click / double tap anywhere to return home</div>
+
+        <div class="ui-root">
+            <div class="absolute top-10 left-20 ui-element">
+                <div class="flex items-baseline gap-3">
+                    <span class="text-7xl font-bold drop-shadow-lg" id="score">0</span>
+                    <span class="text-2xl text-yellow-300 font-bold" id="multiplier">x1.0</span>
+                </div>
+                <div class="text-xl opacity-80 uppercase tracking-widest flex items-center gap-2">
+                    <span id="evo-name">Morning Marsh</span>
+                    <span id="weather-icon">☀️</span>
+                </div>
+                <div id="evo-desc" class="text-xs opacity-60 max-w-xs italic leading-tight mt-1">A quiet, humble beginning.</div>
+            </div>
+
+            <div class="absolute top-10 right-10 flex flex-col items-end ui-element">
+                <div class="text-[10px] font-bold opacity-70 mb-1 tracking-widest uppercase">Pond Ascension Level: <span id="evo-level">0</span></div>
+                <div class="w-64 h-3 bg-black/30 rounded-full overflow-hidden border border-white/20">
+                    <div id="evo-bar" class="h-full bg-gradient-to-r from-yellow-200 to-yellow-500 transition-all duration-700" style="width: 0%"></div>
+                </div>
+                <div class="text-xs mt-1 font-bold" id="evo-goal">Goal: 100</div>
+            </div>
+
+            <div class="absolute top-40 right-10 ui-element">
+                <button onclick="toggleZen(true)" class="group bg-white/10 hover:bg-white/20 px-8 py-4 rounded-full border border-white/30 text-lg backdrop-blur-xl transition-all flex items-center gap-3">
+                    <span class="text-2xl animate-pulse">✨</span>
+                    Enter Spirit Realm
+                </button>
+            </div>
+
+            <div class="absolute bottom-10 left-1/2 -translate-x-1/2 ui-element">
+                <div class="ui-panel">
+                    <button id="btn-add-pad" class="pill-btn" onclick="buyPad()">
+                        <span>New Pad</span>
+                        <span class="text-xs mt-1" id="cost-pad">150</span>
+                    </button>
+                    <button id="btn-friend" class="pill-btn" onclick="openFrogMenu()">
+                        <span>Frog Menu</span>
+                        <span class="text-xs mt-1" id="frog-count">Owned: 0</span>
+                    </button>
+                    <button id="btn-click" class="pill-btn" onclick="buyClick()">
+                        <span>Zen Focus</span>
+                        <span class="text-xs mt-1" id="cost-click">250</span>
+                    </button>
+                    <button id="btn-totem" class="pill-btn" onclick="buyTotem()">
+                        <span>Ancient Totem</span>
+                        <span class="text-xs mt-1" id="cost-totem">5,000</span>
+                    </button>
+                    <button onclick="saveGame()" class="pill-btn save-btn">
+                        <span>Save Game</span>
+                    </button>
+                    <button onclick="showLoadModal()" class="pill-btn save-btn">
+                        <span>Load Game</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Load Modal -->
+<div id="load-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h2 class="text-3xl font-bold mb-4">Load Game</h2>
+        <p class="text-yellow-200 mb-4 text-sm">This will completely wipe your current progress.</p>
+        <textarea id="load-data" rows="6" class="w-full bg-black/30 border border-white/30 rounded-2xl p-4 text-white text-sm font-mono resize-none" placeholder="Paste your saved game data here..."></textarea>
+        <div class="flex gap-3 mt-6">
+            <button onclick="closeLoadModal()" class="flex-1 py-4 bg-gray-600 rounded-2xl font-bold">Cancel</button>
+            <button onclick="loadGame()" class="flex-1 py-4 bg-yellow-400 text-green-900 font-bold rounded-2xl">Load & Wipe Current Progress</button>
+        </div>
+    </div>
+</div>
+
+<!-- ADMIN PANEL (Updated with inputs) -->
+<div id="admin-pane" class="modal-overlay" style="display: none;">
+    <div class="admin-panel">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-bold text-yellow-300">🐸 FROGO ADMIN PANEL 🐸</h2>
+            <button onclick="closeAdminPanel()" class="text-4xl opacity-70 hover:opacity-100">&times;</button>
+        </div>
+        <div class="space-y-6 text-left">
+            <div>
+                <label class="block text-sm mb-1">Add Ribbits</label>
+                <div class="flex gap-2">
+                    <input id="admin-ribbits" type="number" value="100000" class="flex-1 bg-black/40 border border-white/30 rounded-xl p-3 text-white">
+                    <button onclick="adminAddRibbitsCustom()" class="bg-green-600 hover:bg-green-500 px-6 rounded-xl font-bold">Add</button>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm mb-1">Spawn Frogs</label>
+                <div class="flex gap-2">
+                    <input id="admin-frogs" type="number" value="10" class="flex-1 bg-black/40 border border-white/30 rounded-xl p-3 text-white">
+                    <button onclick="adminSpawnFrogsCustom()" class="bg-purple-600 hover:bg-purple-500 px-6 rounded-xl font-bold">Spawn</button>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm mb-1">Add Lily Pads</label>
+                <div class="flex gap-2">
+                    <input id="admin-pads" type="number" value="3" class="flex-1 bg-black/40 border border-white/30 rounded-xl p-3 text-white" max="11">
+                    <button onclick="adminAddPadsCustom()" class="bg-blue-600 hover:bg-blue-500 px-6 rounded-xl font-bold">Add</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="adminMaxEvolution()" class="bg-orange-600 hover:bg-orange-500 py-3 rounded-2xl font-bold">Max Evolution</button>
+                <button onclick="adminMaxTotems()" class="bg-red-600 hover:bg-red-500 py-3 rounded-2xl font-bold">Max Totems</button>
+                <button onclick="adminMaxClick()" class="bg-red-600 hover:bg-red-500 py-3 rounded-2xl font-bold">Max Click Power</button>
+                <button onclick="closeAdminPanel()" class="bg-gray-600 hover:bg-gray-500 py-3 rounded-2xl font-bold">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Catch Modal -->
+<div id="catch-modal" class="modal-overlay">
+    <div class="modal-content">
+        <div id="catch-display" class="mb-6"></div>
+        <h2 class="text-3xl font-bold mb-2" id="catch-name">New Friend!</h2>
+        <p class="text-yellow-200 mb-4" id="catch-stats"></p>
+        <div class="mb-6">
+            <label class="block text-xs uppercase opacity-70 mb-1">Name your frog</label>
+            <input type="text" id="frog-name-input" class="w-full bg-black/30 border border-white/20 rounded-xl p-3 text-center text-xl outline-none" placeholder="Enter name..." maxlength="15">
+        </div>
+        <button onclick="confirmCatch()" class="w-full bg-yellow-400 text-green-900 font-bold py-4 rounded-xl text-xl hover:bg-yellow-300 transition-colors">WELCOME HOME</button>
+    </div>
+</div>
+
+<!-- Frog Menu Modal -->
+<div id="frog-menu-modal" class="modal-overlay">
+    <div class="modal-content !max-w-2xl">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-3xl font-bold">Your Pond Friends</h2>
+            <button onclick="closeFrogMenu()" class="text-4xl opacity-50 hover:opacity-100">&times;</button>
+        </div>
+        <div id="frogs-list" class="grid grid-cols-1 gap-3 max-h-[400px] overflow-y-auto pr-2"></div>
+    </div>
+</div>
+
+<script>
+    const MAX_FROGS_PER_PAD = 4;
+   
+    const PHRASES = ["Totoro-lly awesome!", "Peaceful hopping", "The water is fine", "Zen ripples", "Spirit of the pond", "Leap of faith", "Don't worry, be hoppy", "Lily pad lounging", "Ribbiting adventure", "The final ribbit"];
+    const BANNED_TERMS = ['fuck', 'shit', 'ass', 'bitch', 'cunt', 'dick', 'pussy', 'nigger', 'faggot', 'cock', 'bastard', 'slut', 'whore'];
+    const SPIRIT_NAMES = ["Komorebi", "Susuwatari", "Kodama", "Teto", "Yubaba", "Calcifer", "Jiji", "Haku", "Boh", "Neko", "Zen", "Mochi", "Soot", "Moss", "Rain", "Dew", "Leaf", "Mist", "Spirit"];
+    const EVO_PREFIXES = ["Silent", "Dappled", "Golden", "Radiant", "Mist-Bound", "Eternal", "Hallowed", "Dancing", "Prismatic", "Abyssal", "Starlit", "Whispering", "Velvet", "Glimmering"];
+    const EVO_NOUN = ["Marsh", "Reeds", "Valley", "Grotto", "Sanctuary", "Waters", "Spring", "Lagoon", "Hollow", "Glade", "Zenith", "Reflection", "Basin", "Meadow"];
+    const EVO_DESCS = ["The spirits begin to acknowledge your presence.", "A soft light dances across the surface of the water.", "The air feels heavy with ancient magic.", "Butterflies of light flutter in the distance.", "Everything is perfectly still, and perfectly alive."];
+
+    const FROG_TYPES = Array.from({ length: 50 }, (_, i) => ({
+        id: i,
+        species: `Frog Spirit #${i + 1}`,
+        color: ['#86efac', '#f87171', '#60a5fa', '#fbbf24', '#c084fc', '#f472b6', '#ffffff', '#4ade80'][i % 8],
+        bonusWeather: ['idle', 'rain', 'snow', 'lightning'][i % 4],
+        bonusMult: 1.1 + (i * 0.05),
+        pattern: i % 3 === 0 ? 'dots' : i % 3 === 1 ? 'stripes' : 'none'
+    }));
+
+    // Zelda Frog (Link) - based on the plushie
+    const ZELDA_FROG = {
+        id: 999999,
+        typeId: 0,
+        name: "Link",
+        padIndex: -1,
+        isZelda: true
+    };
+
+    let state = {
+        ribbits: 0,
+        totalInEvo: 0,
+        evolution: 0,
+        pads: 1,
+        clickLv: 1,
+        totems: 0,
+        mult: 1.0,
+        zenMult: 1.0,
+        evoGoal: 100,
+        zenMode: false,
+        weather: 'idle',
+        myFrogs: [],
+        currentCatch: null,
+        placingFrogId: null,
+        gameStarted: false,
+        lastTapTime: 0,
+        isPlacingPad: false
+    };
+
+    function getFrogSVG(type, isZelda = false) {
+        if (isZelda) {
+            return `<svg viewBox="0 0 100 100" style="width:100%; height:100%;">
+                <ellipse cx="50" cy="52" rx="34" ry="32" fill="#60a5fa" stroke="#1e40af" stroke-width="4"/>
+                <circle cx="38" cy="38" r="11" fill="#fcd34d"/>
+                <circle cx="62" cy="38" r="11" fill="#fcd34d"/>
+                <circle cx="38" cy="38" r="5" fill="#1e3a8a"/>
+                <circle cx="62" cy="38" r="5" fill="#1e3a8a"/>
+                <path d="M30 65 Q50 78 70 65" fill="none" stroke="#1e3a8a" stroke-width="4" stroke-linecap="round"/>
+                <path d="M25 25 Q50 12 75 25" fill="#fcd34d" opacity="0.9"/>
+            </svg>`;
+        }
+        let pattern = '';
+        if (type.pattern === 'dots') pattern = `<circle cx="35" cy="40" r="3" fill="white" opacity="0.4"/><circle cx="65" cy="40" r="3" fill="white" opacity="0.4"/>`;
+        if (type.pattern === 'stripes') pattern = `<rect x="30" y="45" width="40" height="2" fill="white" opacity="0.3"/><rect x="30" y="55" width="40" height="2" fill="white" opacity="0.3"/>`;
+        return `<svg viewBox="0 0 100 100" style="width:100%; height:100%;">
+            <ellipse cx="50" cy="55" rx="35" ry="30" fill="${type.color}" stroke="rgba(0,0,0,0.1)" stroke-width="2"/>
+            <circle cx="35" cy="35" r="10" fill="${type.color}"/>
+            <circle cx="65" cy="35" r="10" fill="${type.color}"/>
+            <circle cx="35" cy="35" r="4" fill="white"/><circle cx="35" cy="35" r="1.5" fill="black"/>
+            <circle cx="65" cy="35" r="4" fill="white"/><circle cx="65" cy="35" r="1.5" fill="black"/>
+            <path d="M35 70 Q50 80 65 70" fill="none" stroke="rgba(0,0,0,0.2)" stroke-width="3" stroke-linecap="round"/>
+            ${pattern}
+        </svg>`;
+    }
+
+    function resetGameState() {
+        state.ribbits = 0;
+        state.totalInEvo = 0;
+        state.evolution = 0;
+        state.pads = 1;
+        state.clickLv = 1;
+        state.totems = 0;
+        state.mult = 1.0;
+        state.zenMult = 1.0;
+        state.evoGoal = 100;
+        state.zenMode = false;
+        state.weather = 'idle';
+        state.myFrogs = [];
+        state.currentCatch = null;
+        state.placingFrogId = null;
+        state.isPlacingPad = false;
+        state.lastTapTime = 0;
+
+        document.querySelectorAll('.lily-pad').forEach((pad, index) => {
+            if (index > 0) pad.remove();
+        });
+        document.getElementById('pond-container').style.setProperty('--bg-top', '#a7f3d0');
+        document.getElementById('pond-container').style.setProperty('--bg-bottom', '#4fac82');
+        document.getElementById('fx-layer').innerHTML = '';
+        document.getElementById('spirit-layer').innerHTML = '';
+        cancelPlacement();
+    }
+
+    function startGame() {
+        state.gameStarted = true;
+        const ts = document.getElementById('title-screen');
+        ts.style.opacity = '0';
+        ts.style.transform = 'scale(1.1)';
+        document.getElementById('pond-container').classList.add('visible');
+        setTimeout(() => { ts.style.display = 'none'; }, 1500);
+        updateUI();
+    }
+
+    function pickRandomSubtitle() {
+        const sub = document.getElementById('random-subtitle');
+        sub.innerText = PHRASES[Math.floor(Math.random() * PHRASES.length)];
+    }
+
+    function checkProfanity(text) {
+        if (!text) return false;
+        const clean = text.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return BANNED_TERMS.some(term => clean.includes(term));
+    }
+
+    function generateEvoName(level) {
+        if (level === 0) return "Morning Marsh";
+        const p = EVO_PREFIXES[Math.floor((level * 7) % EVO_PREFIXES.length)];
+        const n = EVO_NOUN[Math.floor((level * 13) % EVO_NOUN.length)];
+        return `${p} ${n}`;
+    }
+
+    function generateEvoColor(level) {
+        const hue1 = (140 + (level * 25)) % 360;
+        const hue2 = (hue1 + 40) % 360;
+        return [`hsl(${hue1}, 50%, 80%)`, `hsl(${hue2}, 40%, 45%)`];
+    }
+
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+            document.getElementById('fs-icon').innerHTML = '<path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>';
+        } else {
+            document.exitFullscreen();
+            document.getElementById('fs-icon').innerHTML = '<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>';
+        }
+    }
+
+    function updateUI() {
+        const frogBonusMult = state.myFrogs.reduce((acc, f) => {
+            const type = FROG_TYPES[f.typeId];
+            const active = (type.bonusWeather === state.weather || type.bonusWeather === 'idle') && f.padIndex !== -1;
+            return acc + (active ? type.bonusMult - 1 : 0);
+        }, 1);
+        const totalMult = state.mult * state.zenMult * frogBonusMult;
+
+        document.getElementById('score').innerText = Math.floor(state.ribbits).toLocaleString();
+        document.getElementById('multiplier').innerText = `x${totalMult.toFixed(1)}`;
+        document.getElementById('evo-name').innerText = generateEvoName(state.evolution);
+        document.getElementById('evo-level').innerText = state.evolution;
+        document.getElementById('evo-goal').innerText = `Goal: ${state.evoGoal.toLocaleString()}`;
+        document.getElementById('evo-bar').style.width = Math.min(100, (state.totalInEvo / state.evoGoal) * 100) + '%';
+        document.getElementById('frog-count').innerText = `Owned: ${state.myFrogs.length}`;
+
+        const pCost = Math.floor(150 * Math.pow(2.2, state.pads - 1));
+        const cCost = Math.floor(250 * Math.pow(1.7, state.clickLv - 1));
+        const tCost = Math.floor(5000 * Math.pow(3, state.totems));
+
+        document.getElementById('cost-pad').innerText = state.pads < 12 ? pCost.toLocaleString() : "MAX";
+        document.getElementById('cost-click').innerText = cCost.toLocaleString();
+        document.getElementById('cost-totem').innerText = tCost.toLocaleString();
+
+        document.getElementById('btn-add-pad').disabled = state.ribbits < pCost || state.pads >= 12;
+        document.getElementById('btn-click').disabled = state.ribbits < cCost;
+        document.getElementById('btn-totem').disabled = state.ribbits < tCost;
+    }
+
+    function gainRibbits(amt) {
+        state.ribbits += amt;
+        state.totalInEvo += amt;
+        if (state.totalInEvo >= state.evoGoal) evolve();
+        updateUI();
+    }
+
+    function evolve() {
+        state.evolution++;
+        state.totalInEvo = 0;
+        state.evoGoal = Math.floor(state.evoGoal * 2.8);
+        state.mult += 0.3 + (state.evolution * 0.08);
+        const pair = generateEvoColor(state.evolution);
+        document.getElementById('pond-container').style.setProperty('--bg-top', pair[0]);
+        document.getElementById('pond-container').style.setProperty('--bg-bottom', pair[1]);
+        document.getElementById('evo-desc').innerText = EVO_DESCS[Math.floor(Math.random() * EVO_DESCS.length)];
+        spawnSpiritBurst();
+        randomizeWeather();
+    }
+
+    // NERFED MONEY SYSTEM
+    function buyPad() {
+        const cost = Math.floor(150 * Math.pow(2.5, state.pads - 1));
+        if (state.ribbits < cost || state.pads >= 12) return;
+        state.ribbits -= cost;
+        state.isPlacingPad = true;
+        document.getElementById('placing-ui').classList.remove('hidden');
+        updateUI();
+    }
+
+    function buyClick() { 
+        const c = Math.floor(250 * Math.pow(1.9, state.clickLv - 1)); 
+        if(state.ribbits >= c){ state.ribbits -= c; state.clickLv++; updateUI(); }
+    }
+
+    function buyTotem() { 
+        const c = Math.floor(5000 * Math.pow(4, state.totems)); 
+        if(state.ribbits >= c){ state.ribbits -= c; state.totems++; updateUI(); }
+    }
+
+    // LILY PAD PLACEMENT
+    function handlePondClick(e) {
+        if (state.zenMode || !state.gameStarted) return;
+        if (state.isPlacingPad && !e.target.closest('.ui-root') && !e.target.closest('#placing-ui')) {
+            placeNewLilyPad(e);
+            return;
+        }
+        spawnRipple(e.clientX, e.clientY);
+    }
+
+    function placeNewLilyPad(e) {
+        if (!state.isPlacingPad) return;
+        const rect = document.getElementById('pond-container').getBoundingClientRect();
+        let clickX = e.clientX - rect.left;
+        let clickY = e.clientY - rect.top;
+        clickX = Math.max(70, Math.min(rect.width - 70, clickX));
+        clickY = Math.max(60, Math.min(rect.height - 60, clickY));
+
+        const padId = state.pads;
+        const pad = document.createElement('div');
+        pad.className = 'lily-pad';
+        pad.id = `pad-${padId}`;
+        pad.style.left = `${clickX - 60}px`;
+        pad.style.top = `${clickY - 50}px`;
+        pad.onclick = (ev) => handlePadInteraction(padId, ev);
+        document.getElementById('main-cluster').appendChild(pad);
+       
+        state.pads++;
+        state.isPlacingPad = false;
+        document.getElementById('placing-ui').classList.add('hidden');
+        updateUI();
+    }
+
+    function cancelPlacement() {
+        state.isPlacingPad = false;
+        document.getElementById('placing-ui').classList.add('hidden');
+    }
+
+    // SAVE / LOAD
+    function saveGame() {
+        const saveData = { v: 1, r: Math.floor(state.ribbits), t: state.totalInEvo, e: state.evolution, p: state.pads, c: state.clickLv, o: state.totems, m: state.mult, g: state.evoGoal, f: state.myFrogs };
+        const jsonStr = JSON.stringify(saveData);
+        const checksum = jsonStr.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 999999;
+        const finalSave = jsonStr + "|" + checksum;
+        navigator.clipboard.writeText(finalSave).then(() => {
+            const toast = document.getElementById('zen-toast');
+            toast.textContent = "✅ Save copied to clipboard!";
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; toast.textContent = "Double click / double tap anywhere to return home"; }, 3000);
+        });
+    }
+
+    function showLoadModal() {
+        document.getElementById('load-modal').style.display = 'flex';
+        document.getElementById('load-data').focus();
+    }
+
+    function closeLoadModal() {
+        document.getElementById('load-modal').style.display = 'none';
+    }
+
+    function loadGame() {
+        const input = document.getElementById('load-data').value.trim();
+        if (!input) return alert("Please paste something!");
+
+        if (input === "code14") {
+            closeLoadModal();
+            document.getElementById('admin-panel').style.display = 'flex';
+            return;
+        }
+
+        if (input === "[frogo]zelda") {
+            closeLoadModal();
+            const linkFrog = {...ZELDA_FROG, id: Date.now()};
+            state.myFrogs.push(linkFrog);
+            refreshPondFrogs();
+            updateUI();
+            alert("✅ Link the Zelda frog has been added to your pond!");
+            return;
+        }
+
+        // Normal save load
+        try {
+            const parts = input.split("|");
+            const jsonStr = parts[0];
+
+            const decoded = JSON.parse(jsonStr);
+            if (decoded.v !== 1) throw new Error();
+
+            resetGameState();
+
+            state.ribbits = decoded.r || 0;
+            state.totalInEvo = decoded.t || 0;
+            state.evolution = decoded.e || 0;
+            state.pads = Math.max(1, decoded.p || 1);
+            state.clickLv = decoded.c || 1;
+            state.totems = decoded.o || 0;
+            state.mult = decoded.m || 1.0;
+            state.evoGoal = decoded.g || 100;
+            state.myFrogs = decoded.f || [];
+
+            const mainCluster = document.getElementById('main-cluster');
+            for (let i = 1; i < state.pads; i++) {
+                if (!document.getElementById(`pad-${i}`)) {
+                    const pad = document.createElement('div');
+                    pad.className = 'lily-pad';
+                    pad.id = `pad-${i}`;
+                    pad.style.left = (15 + Math.random() * 70) + '%';
+                    pad.style.top = (15 + Math.random() * 70) + '%';
+                    pad.onclick = (e) => handlePadInteraction(i, e);
+                    mainCluster.appendChild(pad);
+                }
+            }
+
+            closeLoadModal();
+            refreshPondFrogs();
+            updateUI();
+
+            const toast = document.getElementById('zen-toast');
+            toast.textContent = "✅ Progress loaded successfully!";
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; toast.textContent = "Double click / double tap anywhere to return home"; }, 3000);
+        } catch (e) {
+            alert("Invalid save data!");
+        }
+    }
+
+    function closeAdminPanel() { document.getElementById('admin-panel').style.display = 'none'; }
+
+    function adminAddRibbitsCustom() {
+        const amt = parseFloat(document.getElementById('admin-ribbits').value) || 0;
+        if (amt > 0) gainRibbits(amt);
+    }
+
+    function adminSpawnFrogsCustom() {
+        const count = parseInt(document.getElementById('admin-frogs').value) || 1;
+        for (let i = 0; i < count; i++) {
+            const type = FROG_TYPES[Math.floor(Math.random() * FROG_TYPES.length)];
+            state.myFrogs.push({ id: Date.now() + i, typeId: type.id, name: SPIRIT_NAMES[Math.floor(Math.random() * SPIRIT_NAMES.length)], padIndex: -1 });
+        }
+        updateUI();
+    }
+
+    function adminAddPadsCustom() {
+        const count = parseInt(document.getElementById('admin-pads').value) || 1;
+        for (let i = 0; i < count && state.pads < 12; i++) {
+            const padId = state.pads;
+            const pad = document.createElement('div');
+            pad.className = 'lily-pad';
+            pad.id = `pad-${padId}`;
+            pad.style.left = (15 + Math.random() * 70) + '%';
+            pad.style.top = (15 + Math.random() * 70) + '%';
+            pad.onclick = (e) => handlePadInteraction(padId, e);
+            document.getElementById('main-cluster').appendChild(pad);
+            state.pads++;
+        }
+        updateUI();
+    }
+
+    function adminMaxEvolution() { while (state.evolution < 30) evolve(); }
+    function adminMaxTotems() { state.totems = 50; updateUI(); }
+    function adminMaxClick() { state.clickLv = 30; updateUI(); }
+
+    // Rest of your original functions (handlePadInteraction, spawnWildFrog, initiateCatch, etc.)
+    function handlePadInteraction(padIdx, e) {
+        if (state.zenMode || !state.gameStarted || state.isPlacingPad) return;
+        e.stopPropagation();
+        if (state.placingFrogId !== null) {
+            const frogsOnThisPad = state.myFrogs.filter(f => f.padIndex === padIdx).length;
+            if (frogsOnThisPad < MAX_FROGS_PER_PAD) confirmPlacement(padIdx);
+            else {
+                const el = document.getElementById(`pad-${padIdx}`);
+                el.classList.add('shake');
+                setTimeout(() => el.classList.remove('shake'), 400);
+            }
+            return;
+        }
+        const power = 5 * Math.pow(1.5, state.clickLv - 1) * state.mult;
+        gainRibbits(power);
+        spawnText(e.clientX, e.clientY, `+${Math.floor(power)}`);
+        spawnRipple(e.clientX, e.clientY);
+    }
+
+    function spawnWildFrog(padIdx) {
+        if (!state.gameStarted) return;
+        const pad = document.getElementById(`pad-${padIdx}`);
+        if (!pad || pad.querySelectorAll('.frog-sprite').length > 0) return;
+        const type = FROG_TYPES[Math.floor(Math.random() * FROG_TYPES.length)];
+        const frogEl = document.createElement('div');
+        frogEl.className = 'frog-sprite wild-frog';
+        frogEl.innerHTML = getFrogSVG(type);
+        frogEl.onclick = (e) => { e.stopPropagation(); initiateCatch(type, padIdx); };
+        pad.appendChild(frogEl);
+        pad.dataset.spawning = 'false';
+    }
+
+    function initiateCatch(type, padIdx) {
+        state.currentCatch = { type, padIdx };
+        document.getElementById('catch-display').innerHTML = `<div class="w-32 h-32 mx-auto">${getFrogSVG(type)}</div>`;
+        document.getElementById('catch-name').innerText = type.species;
+        document.getElementById('catch-stats').innerText = `Bonus: ${type.bonusWeather.toUpperCase()} (+${((type.bonusMult - 1) * 100).toFixed(0)}%)`;
+        document.getElementById('frog-name-input').value = "";
+        document.getElementById('catch-modal').style.display = 'flex';
+    }
+
+    function confirmCatch() {
+        const input = document.getElementById('frog-name-input');
+        const inputName = input.value.trim();
+        if (checkProfanity(inputName)) {
+            input.classList.add('input-error');
+            input.value = SPIRIT_NAMES[Math.floor(Math.random() * SPIRIT_NAMES.length)];
+            return;
+        }
+        const finalName = inputName || state.currentCatch.type.species;
+        state.myFrogs.push({ id: Date.now(), typeId: state.currentCatch.type.id, name: finalName, padIndex: -1 });
+        const pad = document.getElementById(`pad-${state.currentCatch.padIdx}`);
+        if (pad) {
+            const wild = pad.querySelector('.wild-frog');
+            if(wild) wild.remove();
+        }
+        document.getElementById('catch-modal').style.display = 'none';
+        state.currentCatch = null;
+        updateUI();
+    }
+
+    function startPlacement(frogId) {
+        state.placingFrogId = frogId;
+        closeFrogMenu();
+        document.querySelectorAll('.lily-pad').forEach((pad, idx) => {
+            const count = state.myFrogs.filter(f => f.padIndex === idx).length;
+            if (count < MAX_FROGS_PER_PAD) pad.classList.add('selectable');
+            else pad.classList.add('is-full');
+        });
+    }
+
+    function confirmPlacement(padIdx) {
+        const frog = state.myFrogs.find(f => f.id === state.placingFrogId);
+        if (frog) {
+            frog.padIndex = padIdx;
+            document.querySelectorAll('.lily-pad').forEach(p => {
+                p.classList.remove('selectable');
+                p.classList.remove('is-full');
+            });
+            state.placingFrogId = null;
+            refreshPondFrogs();
+            updateUI();
+        }
+    }
+
+    function refreshPondFrogs() {
+        document.querySelectorAll('.lily-pad').forEach(p => {
+            const wild = p.querySelector('.wild-frog');
+            p.innerHTML = '';
+            if(wild) p.appendChild(wild);
+        });
+        state.myFrogs.forEach(f => {
+            if (f.padIndex !== -1) {
+                const pad = document.getElementById(`pad-${f.padIndex}`);
+                if (pad) {
+                    const sprite = document.createElement('div');
+                    sprite.className = 'frog-sprite';
+                    sprite.innerHTML = getFrogSVG(FROG_TYPES[f.typeId], f.isZelda);
+                    sprite.title = f.name;
+                    pad.appendChild(sprite);
+                }
+            }
+        });
+    }
+
+    function handleSpiritRealmExit(e) {
+        if (!state.zenMode) return;
+        const now = Date.now();
+        if (now - state.lastTapTime < 280) toggleZen(false);
+        state.lastTapTime = now;
+    }
+
+    function toggleZen(active) {
+        state.zenMode = active;
+        document.body.classList.toggle('zen-active', active);
+        const detector = document.getElementById('zen-exit-detector');
+        if (active) {
+            document.getElementById('zen-toast').style.opacity = '1';
+            setTimeout(() => document.getElementById('zen-toast').style.opacity = '0', 2800);
+            startZenEcosystem();
+            detector.ondblclick = handleSpiritRealmExit;
+            detector.ontouchstart = handleSpiritRealmExit;
+        } else {
+            refreshPondFrogs();
+            detector.ondblclick = null;
+            detector.ontouchstart = null;
+        }
+        updateUI();
+    }
+
+    function startZenEcosystem() { state.zenMult = 2.0; randomizeWeather(); }
+    function stopZenEcosystem() { state.zenMult = 1.0; state.weather = 'idle'; document.getElementById('weather-icon').innerText = '☀️'; }
+
+    function randomizeWeather() {
+        const types = ['idle', 'rain', 'snow'];
+        state.weather = types[Math.floor(Math.random() * types.length)];
+        const fx = document.getElementById('fx-layer'); fx.innerHTML = '';
+        const icon = document.getElementById('weather-icon');
+        if (state.weather === 'rain') {
+            icon.innerText = '🌧️';
+            for(let i=0; i<40; i++) {
+                const d = document.createElement('div'); d.className = 'rain-drop';
+                d.style.left = Math.random() * 100 + 'vw'; d.style.animationDelay = Math.random() + 's';
+                fx.appendChild(d);
+            }
+        } else if (state.weather === 'snow') {
+            icon.innerText = '❄️';
+            for(let i=0; i<30; i++) {
+                const f = document.createElement('div'); f.className = 'snow-flake';
+                const s = 4 + Math.random()*6; f.style.width = s+'px'; f.style.height = s+'px';
+                f.style.left = Math.random()*100+'vw'; f.style.animationDelay = Math.random()*3+'s';
+                fx.appendChild(f);
+            }
+        } else { icon.innerText = '☀️'; }
+    }
+
+    function spawnSpiritBurst() {
+        for(let i=0; i<15; i++) {
+            const orb = document.createElement('div');
+            orb.className = 'spirit-orb';
+            orb.style.left = (20 + Math.random() * 60) + 'vw';
+            orb.style.top = (20 + Math.random() * 60) + 'vh';
+            document.getElementById('spirit-layer').appendChild(orb);
+            setTimeout(() => orb.remove(), 10000);
+        }
+    }
+
+    function spawnRipple(x, y) {
+        const r = document.createElement('div');
+        r.style.cssText = `position:absolute; width:10px; height:10px; border:2px solid rgba(255,255,255,0.4); border-radius:50%; pointer-events:none; left:${x}px; top:${y}px; transition: all 1s ease-out; opacity:0.6; z-index:1;`;
+        document.body.appendChild(r);
+        setTimeout(() => { r.style.transform = "scale(15)"; r.style.opacity = "0"; }, 20);
+        setTimeout(() => r.remove(), 1000);
+    }
+
+    function spawnText(x, y, txt) {
+        const t = document.createElement('div');
+        t.className = 'floating-text';
+        t.innerText = txt;
+        t.style.left = x + 'px';
+        t.style.top = y + 'px';
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 1200);
+    }
+
+    function openFrogMenu() {
+        const list = document.getElementById('frogs-list');
+        list.innerHTML = state.myFrogs.length === 0 ? `<div class="text-center opacity-50 py-10">No frogs yet. Wait for a visitor!</div>` : '';
+        state.myFrogs.forEach(frog => {
+            const type = FROG_TYPES[frog.typeId];
+            const div = document.createElement('div');
+            div.className = 'bg-white/10 rounded-2xl p-4 mb-2 flex items-center gap-4';
+            div.innerHTML = `
+                <div class="w-16 h-16">${getFrogSVG(type, frog.isZelda)}</div>
+                <div class="flex-1">
+                    <div class="font-bold text-xl">${frog.name}</div>
+                    <div class="text-xs text-yellow-200 uppercase">${frog.isZelda ? 'Legendary' : type.species} • Bonus: ${type.bonusWeather}</div>
+                </div>
+                <div>
+                    ${frog.padIndex !== -1 ? `<button onclick="removeFromPond(${frog.id})" class="bg-red-500 px-4 py-2 rounded-xl font-bold">Recall</button>` : `<button onclick="startPlacement(${frog.id})" class="bg-yellow-500 text-green-900 px-4 py-2 rounded-xl font-bold">Place</button>`}
+                </div>`;
+            list.appendChild(div);
+        });
+        document.getElementById('frog-menu-modal').style.display = 'flex';
+    }
+
+    function closeFrogMenu() { document.getElementById('frog-menu-modal').style.display = 'none'; }
+    function removeFromPond(frogId) {
+        const f = state.myFrogs.find(x => x.id === frogId);
+        if(f) f.padIndex = -1;
+        refreshPondFrogs();
+        openFrogMenu();
+        updateUI();
+    }
+
+    function initTitleDeco() {
+        const deco = document.getElementById('title-deco');
+        for(let i=0; i<15; i++) {
+            const leaf = document.createElement('div');
+            leaf.style.cssText = `position:absolute; width:40px; height:40px; background:#62b88e; border-radius:50% 0 50% 50%; left:${Math.random()*100}%; top:${Math.random()*100}%; opacity:${0.2 + Math.random()*0.3}; transform: rotate(${Math.random()*360}deg);`;
+            deco.appendChild(leaf);
+        }
+    }
+
+    setInterval(() => {
+        if (!state.gameStarted) return;
+        let passive = state.totems * 8;
+        state.myFrogs.forEach(f => { if (f.padIndex !== -1) passive += 1; });
+        if (passive > 0) gainRibbits((passive * state.mult * state.zenMult) / 20);
+
+        for (let i = 0; i < state.pads; i++) {
+            const p = document.getElementById(`pad-${i}`);
+            if (p && p.querySelectorAll('.frog-sprite').length === 0 && p.dataset.spawning !== 'true') {
+                p.dataset.spawning = 'true';
+                setTimeout(() => spawnWildFrog(i), 4000 + Math.random() * 8000);
+            }
+        }
+    }, 150);
+
+    window.onload = () => {
+        pickRandomSubtitle();
+        initTitleDeco();
+        updateUI();
+    };
+</script>
+</body>
+</html>
